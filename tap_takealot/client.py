@@ -22,12 +22,12 @@ class TakealotStream(RESTStream):
     def url_base(self) -> str:
         """Return the API URL root, configurable via tap settings."""
         # TODO: hardcode a value here, or retrieve it from self.config
-        return "https://api.mysample.com"
+        return self.config.get("api_url")
 
     records_jsonpath = "$[*]"  # Or override `parse_response`.
 
     # Set this value or override `get_new_paginator`.
-    next_page_token_jsonpath = "$.next_page"  # noqa: S105
+    # next_page_token_jsonpath = "$.next_page"  # noqa: S105
 
     @property
     def authenticator(self) -> APIKeyAuthenticator:
@@ -38,8 +38,8 @@ class TakealotStream(RESTStream):
         """
         return APIKeyAuthenticator.create_for_stream(
             self,
-            key="x-api-key",
-            value=self.config.get("auth_token", ""),
+            key="Authorization",
+            value="Key " + self.config.get("api_key"),
             location="header",
         )
 

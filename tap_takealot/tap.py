@@ -17,17 +17,11 @@ class TapTakealot(Tap):
     # TODO: Update this section with the actual config values you expect:
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "auth_token",
+            "api_key",
             th.StringType,
             required=True,
             secret=True,  # Flag config as protected.
-            description="The token to authenticate against the API service",
-        ),
-        th.Property(
-            "project_ids",
-            th.ArrayType(th.StringType),
-            required=True,
-            description="Project IDs to replicate",
+            description="The API key to authenticate against the API service",
         ),
         th.Property(
             "start_date",
@@ -35,11 +29,22 @@ class TapTakealot(Tap):
             description="The earliest record date to sync",
         ),
         th.Property(
+            "end_date",
+            th.DateTimeType,
+            description="The latest record date to sync",
+        ),
+        th.Property(
             "api_url",
             th.StringType,
-            default="https://api.mysample.com",
+            default="https://seller-api.takealot.com",
             description="The url for the API service",
         ),
+        th.Property(
+            "page_size",
+            th.IntegerType,
+            default=100,
+            description="Page size of each response",
+        )
     ).to_dict()
 
     def discover_streams(self) -> list[streams.TakealotStream]:
@@ -49,8 +54,7 @@ class TapTakealot(Tap):
             A list of discovered streams.
         """
         return [
-            streams.GroupsStream(self),
-            streams.UsersStream(self),
+            streams.SalesStream(self)
         ]
 
 

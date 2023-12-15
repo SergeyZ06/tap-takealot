@@ -3,64 +3,74 @@
 from __future__ import annotations
 
 import typing as t
-from pathlib import Path
 
 from singer_sdk import typing as th  # JSON Schema typing helpers
+from singer_sdk.pagination import BasePageNumberPaginator
 
 from tap_takealot.client import TakealotStream
 
-# TODO: Delete this is if not using json files for schema definition
-SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
-# TODO: - Override `UsersStream` and `GroupsStream` with your own stream definition.
-#       - Copy-paste as many times as needed to create multiple stream types.
+from datetime import datetime
 
 
-class UsersStream(TakealotStream):
+class SalesPaginator(BasePageNumberPaginator):
+    def has_more(self, response):
+        total = response.json()['page_summary']['total']
+        page_size = response.json()['page_summary']['page_size']
+        page_number = response.json()['page_summary']['page_number']
+        return page_number * page_size < total
+
+
+class SalesStream(TakealotStream):
     """Define custom stream."""
 
-    name = "users"
-    path = "/users"
-    primary_keys: t.ClassVar[list[str]] = ["id"]
-    replication_key = None
-    # Optionally, you may also use `schema_filepath` in place of `schema`:
-    # schema_filepath = SCHEMAS_DIR / "users.json"  # noqa: ERA001
+    name = "sales"
+    path = "/v2/sales"
+    records_jsonpath = "$.sales[*]"
+
+    primary_keys: t.ClassVar[list[str]] = ["order_id"]
+    replication_key = "order_date"
+    
     schema = th.PropertiesList(
-        th.Property("name", th.StringType),
-        th.Property(
-            "id",
-            th.StringType,
-            description="The user's system ID",
-        ),
-        th.Property(
-            "age",
-            th.IntegerType,
-            description="The user's age in years",
-        ),
-        th.Property(
-            "email",
-            th.StringType,
-            description="The user's email address",
-        ),
-        th.Property("street", th.StringType),
-        th.Property("city", th.StringType),
-        th.Property(
-            "state",
-            th.StringType,
-            description="State name in ISO 3166-2 format",
-        ),
-        th.Property("zip", th.StringType),
+        th.Property("order_id", th.IntegerType),
+        th.Property("order_item_id", th.IntegerType),
+        th.Property("quantity", th.IntegerType),
+        th.Property("selling_price", th.NumberType),
+        th.Property("order_date", th.DateTimeType),
     ).to_dict()
 
+    def get_new_paginator(self):
+        return SalesPaginator(start_value=1)
+    
+    def get_url_params(self, context, next_page_token):
+        params = {}
 
-class GroupsStream(TakealotStream):
-    """Define custom stream."""
+        if next_page_token:
+            params["page_number"] = next_page_token
+        else:
+            params["page_number"] = 1
 
-    name = "groups"
-    path = "/groups"
-    primary_keys: t.ClassVar[list[str]] = ["id"]
-    replication_key = "modified"
-    schema = th.PropertiesList(
-        th.Property("name", th.StringType),
-        th.Property("id", th.StringType),
-        th.Property("modified", th.DateTimeType),
-    ).to_dict()
+        start_date = self.compare_start_date(
+            value=self.get_starting_replication_key_value(context=context),
+            start_date_value=self.config['start_date']
+        ).split()[0]
+
+        end_date = self.config.get("end_date")
+
+        if start_date and end_date:
+            params['filters'] = f'start_date:{start_date},end_date:{end_date}'
+        elif start_date:
+            params['filters'] = f'start_date:{start_date}'
+        elif end_date:
+            params['filters'] = f'end_date:{end_date}'
+
+        params['page_size'] = self.config.get("page_size")
+
+        return params
+    
+    def post_process(
+        self,
+        row: dict,
+        context: dict | None = None,  # noqa: ARG002
+    ) -> dict | None:
+        row['order_date'] = datetime.strptime(row['order_date'], '%d %b %Y %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
+        return row
