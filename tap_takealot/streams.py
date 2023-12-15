@@ -27,7 +27,7 @@ class SalesStream(TakealotStream):
     path = "/v2/sales"
     records_jsonpath = "$.sales[*]"
 
-    primary_keys: t.ClassVar[list[str]] = ["order_id"]
+    primary_keys: t.ClassVar[list[str]] = ["order_id", "order_item_id"]
     replication_key = "order_date"
     
     schema = th.PropertiesList(
