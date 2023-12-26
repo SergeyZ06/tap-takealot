@@ -36,6 +36,8 @@ class SalesStream(TakealotStream):
         th.Property("quantity", th.IntegerType),
         th.Property("selling_price", th.NumberType),
         th.Property("order_date", th.DateTimeType),
+        th.Property("sku", th.DateTimeType),
+        th.Property("product_title", th.DateTimeType)
     ).to_dict()
 
     def get_new_paginator(self):
