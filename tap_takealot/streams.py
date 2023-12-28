@@ -38,7 +38,7 @@ class SalesStream(TakealotStream):
         th.Property("order_date", th.DateTimeType),
         th.Property("sku", th.StringType),
         th.Property("product_title", th.StringType),
-        th.Property("sale_status", th.BooleanType)
+        th.Property("sale_status", th.StringType)
     ).to_dict()
 
     def get_new_paginator(self):
@@ -76,4 +76,5 @@ class SalesStream(TakealotStream):
         context: dict | None = None,  # noqa: ARG002
     ) -> dict | None:
         row['order_date'] = datetime.strptime(row['order_date'], '%d %b %Y %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
+        row['sale_status'] = str(row['sale_status'])
         return row
